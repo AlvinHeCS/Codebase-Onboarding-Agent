@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.api.routes import health, users, repositories, chunks, code
+from app.api.routes import health, users, repositories, chunks, code, tools
 from sqlalchemy import text
 from app.db import engine
 from app.models.base import Base
@@ -23,3 +23,4 @@ app.include_router(users.router)
 app.include_router(repositories.router)
 app.include_router(chunks.router)
 app.include_router(code.router)
+app.include_router(tools.router)

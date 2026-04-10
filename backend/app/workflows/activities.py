@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 import httpx
@@ -273,6 +274,12 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
     return [item.embedding for item in response.data]
 
 
+def _extract_name(chunk_text: str, pattern: str) -> str | None:
+    """Extract symbol name from chunk text using a regex pattern."""
+    match = re.search(pattern, chunk_text)
+    return match.group(1) if match else None
+
+
 def build_chunk_payloads(chunks: list[str], full_content: str, file_id: int) -> list[dict]:
     """Build chunk payloads with metadata (type, line numbers)."""
     lines = full_content.splitlines()
@@ -294,21 +301,27 @@ def build_chunk_payloads(chunks: list[str], full_content: str, file_id: int) -> 
 
         # Determine chunk type from content
         chunk_type = "code"
+        name = None
         lower = chunk_text.lower()
         if lower.startswith(("import ", "from ", "require(", "package ")):
             chunk_type = "import"
         elif "class " in lower[:50]:
             chunk_type = "class"
+            name = _extract_name(chunk_text, r'class\s+(\w+)')
         elif "def " in lower[:50] or "function " in lower[:50] or "func " in lower[:50] or "fn " in lower[:50]:
             chunk_type = "function"
+            name = _extract_name(chunk_text, r'(?:def|function|func|fn)\s+(\w+)')
         elif lower.startswith(("interface ", "type ")):
             chunk_type = "interface"
+            name = _extract_name(chunk_text, r'(?:interface|type)\s+(\w+)')
         elif lower.startswith(("struct ", "enum ")):
             chunk_type = "struct"
+            name = _extract_name(chunk_text, r'(?:struct|enum)\s+(\w+)')
 
         payloads.append({
             "content": chunk_text,
             "chunk_type": chunk_type,
+            "name": name,
             "start_line": start_line,
             "end_line": end_line,
             "file_id": file_id,
